@@ -67,4 +67,5 @@ Target look:
 - [x] `typer` — typing-speed game: random sentence, WPM + accuracy, best scores in `~/.local/share/typer/` (built 2026-11-03)
   - [ ] idea: show today's best in `motd`'s focus area
   - [ ] idea: `typer code` mode with shell commands as sentences
-- [ ] `tidy` — sort `~/Downloads` into folders by file type, with a `--dry-run`
+- [x] `tidy` — sort `~/Downloads` into folders by file type, with a dry run (built 2026-11-03; dry run is the default)
+  - [ ] actually run `tidy go` on ~/Downloads when ready

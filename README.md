@@ -11,6 +11,7 @@ Small, fun and useful command-line tools for my Fedora laptop, built together wi
 | `tmr` | [`tmr/`](tmr/README.md) | Big clock, countdown, stopwatch, pomodoro + focus log | `tmr pomo` |
 | `sys` | [`sys/`](sys/README.md) | System health, RAM hogs, network, boot, updates, cleanup | `sys` |
 | `typer` | [`typer/`](typer/README.md) | Typing-speed game: live green/red, WPM + accuracy, best scores, sparkline | `typer 5` |
+| `tidy` | [`tidy/`](tidy/README.md) | Sort ~/Downloads into type folders: dry run first, logged, undoable | `tidy` |
 | `motd` | [`motd/`](motd/README.md) | Greeting: picture │ info box (weather, system, focus) │ cowsay animal with a fortune | `motd` |
 
 Each folder's README covers that tool's commands, examples and gotchas.
@@ -31,8 +32,11 @@ System_scripts/
 ├── motd/
 │   ├── motd
 │   └── README.md
-└── typer/
-    ├── typer
+├── typer/
+│   ├── typer
+│   └── README.md
+└── tidy/
+    ├── tidy
     └── README.md
 ```
 
@@ -67,6 +71,8 @@ The links point back into this repo, so editing a script here takes effect right
 
 ## Changelog
 
+- **2026-11-03** — Added `tidy`: dry-run-by-default Downloads sorter with 11 categories,
+  clash-safe names, per-move logs, `undo`, `history`, `old`.
 - **2026-11-03** — Added `typer`: typing-speed game with live coloring, WPM/accuracy,
   multi-round mode, custom text, best/stats/log, sparkline of recent rounds.
 - **2026-11-03** — `motd`: three-column layout, with the cowsay animal moved to the right of the box
