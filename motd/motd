@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# motd — terminal greeting: random picture + info box (weather, system, focus) + cow fortune
+# motd — terminal greeting: random picture | info box (weather, system, focus) | cowsay fortune
 set -euo pipefail
 
 CITY="${MOTD_CITY:-}"                       # empty = wttr.in guesses from your IP
@@ -7,13 +7,14 @@ PICDIR="${MOTD_PICS:-$HOME/Pictures/motd}"  # drop .png/.jpg/.gif/.webp here
 MODE="${MOTD_MODE:-auto}"                   # auto | pic | cow | both | none
 PIC_SIZE="30x15"                            # chafa cells, roughly 240x240 px
 BOX_W=44                                    # inner width of the info box
+COW_W=28                                    # fortune wrap width for the cow on the right
 WEATHER_TTL=1800                            # seconds before weather is fetched again
 CACHEDIR="$HOME/.cache/motd"
 mkdir -p "$CACHEDIR/pics"
 
 usage() { cat <<'EOF'
 Usage:
-  motd                picture + info box (+ cow, see MOTD_MODE)
+  motd                picture | info box | cow (see MOTD_MODE)
   motd short          one-line version
   motd weather [city] weather now (default: MOTD_CITY or auto-detect)
   motd cow            random cow with a fortune
@@ -23,7 +24,7 @@ Usage:
 Environment:
   MOTD_CITY=Chennai   fixed weather city
   MOTD_PICS=dir       picture folder (default ~/Pictures/motd)
-  MOTD_MODE=auto      auto (pic if any, else cow) | pic | cow | both | none
+  MOTD_MODE=auto      auto/both (pic + box + cow) | pic | cow | none
 EOF
 exit "${1:-0}"; }
 
@@ -181,17 +182,17 @@ box_row() {
 }
 
 draw() {
-    local pic="" show_pic=0 show_cow=0 cols pw=0 left i n off_p=0 off_b=0
-    local -a PL=()
+    local pic="" show_pic=0 show_cow=0 cols pw=0 cw=0 left cowcol i n
+    local off_p=0 off_b=0 off_c=0 cow_below=0 tail=-1 cowtxt=""
+    local -a PL=() CL=()
 
     list_pics
     case "$MODE" in
-        auto) if (( ${#PICS[@]} > 0 )) && have chafa; then show_pic=1; else show_cow=1; fi ;;
-        pic)  show_pic=1 ;;
-        cow)  show_cow=1 ;;
-        both) show_pic=1; show_cow=1 ;;
-        none) ;;
-        *)    echo "bad MOTD_MODE: $MODE" >&2; exit 1 ;;
+        auto|both) show_cow=1; (( ${#PICS[@]} > 0 )) && have chafa && show_pic=1 ;;
+        pic)       show_pic=1 ;;
+        cow)       show_cow=1 ;;
+        none)      ;;
+        *)         echo "bad MOTD_MODE: $MODE" >&2; exit 1 ;;
     esac
     if (( show_pic )); then
         pic=$(random_pic || true)
@@ -199,42 +200,89 @@ draw() {
         (( ${#PL[@]} > 0 )) && pw=$(sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' <<< "$pic" | wc -L)
     fi
 
-    # the picture "says" the fortune; without one the cow says it below instead
+    # fortune goes inside the box only when no cow is there to say it
     build_rows $(( ${#PL[@]} > 0 && ! show_cow ))
     cols=$(tput cols 2>/dev/null || echo 80)
-    echo
 
+    # picture | box side by side if both fit, else stacked
     if (( ${#PL[@]} > 0 )) && (( pw + 5 + BOX_W + 2 <= cols )); then
-        # side by side: picture left, speech-bubble box right, shorter one centred
-        local tail
         left=$(( pw + 6 ))                              # 2-col gap + "◀─" tail
-        n=$(( ${#PL[@]} > ${#ROWS[@]} ? ${#PL[@]} : ${#ROWS[@]} ))
-        off_p=$(( (n - ${#PL[@]}) / 2 )); off_b=$(( (n - ${#ROWS[@]}) / 2 ))
-        tail=$(( n / 2 - off_b ))                       # box row level with the picture's middle
-        [[ ${ROWS[tail]:-TOP} =~ ^(TOP|SEP|BOT)$ ]] && tail=$(( tail + 1 ))
-        for (( i = 0; i < n; i++ )); do
-            local p=$(( i - off_p )) b=$(( i - off_b ))
-            printf ' '
-            if (( p >= 0 && p < ${#PL[@]} )); then printf '%s%s' "${PL[p]}" "$C_RESET"; fi
-            if (( b >= 0 && b < ${#ROWS[@]} )); then
-                box_row "${ROWS[b]}" "$left" $(( b == tail ))
-            fi
-            printf '\n'
-        done
     else
-        # narrow terminal (or no picture): stack them
-        for line in "${PL[@]}"; do printf ' %s%s\n' "$line" "$C_RESET"; done
-        for row in "${ROWS[@]}"; do box_row "$row" 2; printf '\n'; done
+        left=2
+    fi
+    cowcol=$(( left + BOX_W + 5 ))
+
+    # cow to the right of the box if one fits in the space left, else below
+    if (( show_cow )); then
+        cowtxt=$(cow_fit $(( cols - cowcol )) || true)
+        if [ -n "$cowtxt" ]; then
+            mapfile -t CL <<< "$cowtxt"
+        else
+            cow_below=1
+        fi
     fi
 
-    if (( show_cow )); then echo; cow; fi
+    echo
+    if (( left == 2 )); then
+        for line in "${PL[@]}"; do printf ' %s%s\n' "$line" "$C_RESET"; done
+        PL=()
+    fi
+
+    # print the side-by-side blocks row by row, each centred vertically
+    n=${#ROWS[@]}
+    (( ${#PL[@]} > n )) && n=${#PL[@]}
+    (( ${#CL[@]} > n )) && n=${#CL[@]}
+    off_p=$(( (n - ${#PL[@]}) / 2 )); off_b=$(( (n - ${#ROWS[@]}) / 2 )); off_c=$(( (n - ${#CL[@]}) / 2 ))
+    if (( ${#PL[@]} > 0 )); then
+        tail=$(( off_p + ${#PL[@]} / 2 - off_b ))      # box row level with the picture's middle
+        (( tail < 1 )) && tail=1
+        (( tail > ${#ROWS[@]} - 2 )) && tail=$(( ${#ROWS[@]} - 2 ))
+        [[ ${ROWS[tail]} =~ ^(TOP|SEP|BOT)$ ]] && tail=$(( tail + 1 ))
+    fi
+    for (( i = 0; i < n; i++ )); do
+        local p=$(( i - off_p )) b=$(( i - off_b )) c=$(( i - off_c ))
+        printf ' '
+        if (( p >= 0 && p < ${#PL[@]} )); then printf '%s%s' "${PL[p]}" "$C_RESET"; fi
+        if (( b >= 0 && b < ${#ROWS[@]} )); then box_row "${ROWS[b]}" "$left" $(( b == tail )); fi
+        if (( c >= 0 && c < ${#CL[@]} )); then printf '\033[%dG%s' "$cowcol" "${CL[c]}"; fi
+        printf '\n'
+    done
+
+    if (( cow_below )); then echo; cow; fi
+}
+
+cow_names() {
+    # this cowsay lists one name per line; drop any "Cow files in ...:" header
+    cowsay -l | grep -v ':' | tr ' ' '\n' | grep -v '^$'
+}
+
+cow_widths() {
+    # cached "name<TAB>art width" for every cow, so picking one needs a single cowsay call
+    local cache="$CACHEDIR/cows.tsv" c
+    if [ ! -s "$cache" ]; then
+        while read -r c; do
+            printf '%s\t%s\n' "$c" "$(cowsay -f "$c" x 2>/dev/null | tail -n +4 | wc -L)"
+        done < <(cow_names) > "$cache"
+    fi
+    cat "$cache"
+}
+
+cow_fit() {
+    # $1 = columns available; prints a random cow + fortune no wider than that
+    local maxw="$1" name out
+    have fortune && have cowsay || return 1
+    (( maxw >= COW_W + 4 )) || return 1               # the speech bubble alone needs this
+    name=$(cow_widths | awk -F'\t' -v m="$maxw" '$2 <= m {print $1}' | shuf -n1)
+    [ -n "$name" ] || return 1
+    out=$(fortune -s -n 100 | cowsay -W "$COW_W" -f "$name")
+    (( $(wc -L <<< "$out") <= maxw )) || return 1
+    printf '%s\n' "$out"
 }
 
 cow() {
     have fortune || { echo "install fortune-mod for fortunes"; return; }
     if have cowsay; then
-        # this cowsay lists one name per line; drop any "Cow files in ...:" header
-        local cows; mapfile -t cows < <(cowsay -l | grep -v ':' | tr ' ' '\n' | grep -v '^$')
+        local cows; mapfile -t cows < <(cow_names)
         fortune -s | cowsay -f "${cows[RANDOM % ${#cows[@]}]}"
     else
         fortune -s

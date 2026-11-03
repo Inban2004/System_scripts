@@ -55,6 +55,7 @@ Target look:
 ### 4. Last step
 - [x] Drop some pictures into `~/Pictures/motd/` (14 Fluent Emoji 3D + 3 of my wallpapers)
 - [x] Cowsay-style: picture "says" the box via a `◀─┤` tail, fortune inside the bubble
+- [x] Three columns: picture │ box │ cowsay animal (falls back to below when narrow)
 - [ ] Check the look in real Tilix and tune `PIC_SIZE` / `BOX_W` by eye
 - [ ] Maybe remove the 3 big wallpapers (gargantua, japan, sukuna): detailed photos look noisy as blocks
 - [ ] Add to the end of `~/.zshrc`:

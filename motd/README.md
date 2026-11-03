@@ -1,9 +1,10 @@
 # motd — terminal greeting
 
-A "message of the day" for when you open a terminal, in **cowsay style**: a random picture
-from your folder is the character, and it "says" a speech-bubble box (`◀─┤`) with a greeting,
-the date, weather, a system check, today's focus minutes from `tmr` and a short fortune 💬.
-With no pictures, the box shows on its own and a random cow tells the fortune below it.
+A "message of the day" for when you open a terminal, in three columns:
+
+**random picture** (chafa) **│ info box** (greeting, date, weather, system, `tmr` focus) **│ cowsay animal** telling a fortune
+
+On a narrower terminal, the animal moves below. With no pictures, it's just the box and the animal.
 
 - **Source:** `motd/motd`
 - **Installed as:** `~/bin/motd` (symlink via `./install.sh`)
@@ -30,38 +31,42 @@ With no pictures, the box shows on its own and a random cow tells the fortune be
 |-------------|--------------------|-----------------------------------------------------------|
 | `MOTD_CITY` | *(empty = auto)*   | Fixed weather city, e.g. `MOTD_CITY=Chennai`              |
 | `MOTD_PICS` | `~/Pictures/motd`  | Picture folder                                            |
-| `MOTD_MODE` | `auto`             | `auto` (picture if any, else cow) · `pic` · `cow` · `both` · `none` |
+| `MOTD_MODE` | `auto`             | `auto`/`both` = picture + box + cow · `pic` = picture + box (fortune inside) · `cow` = box + cow · `none` = box only |
 
 Set them permanently in `~/.zshrc`, e.g. `export MOTD_CITY=Chennai`, or try them once:
 `MOTD_MODE=both motd`.
 Size settings are at the top of the script: `PIC_SIZE="30x15"` (chafa cells, ≈240×240 px)
-and `BOX_W=44`.
+`BOX_W=44` and `COW_W=28` (how wide the cow's fortune bubble wraps).
 
 ## Example
 
 ```
-$ motd
-
-         ▅▔▔▀      ▀▔▔▅            ╭────────────────────────────────────────────╮
-       ▗▂▃▔▝▂▂    ▂▂▆▔▃▂▖          │  Good night 🌙  inba                       │
-       ▘▞▃▅▝▐▝▝▂▂▘▖▔▃▆▝▝▝          │  Tuesday, 03 November 2026 · 22:28         │
-      ▊▍▏▃▀▅▀▅▝▅▀▘▅▔▅▂▏▋▐▎         ├────────────────────────────────────────────┤
-      ▋▕▃▅▆▔▘▀▐▎▕▗▃▀▅▅▅▃▘▍         │  weather  🌦️ +10°C (feels +8°C)            │
-      ▋▀▆▐▀▀▖▐▗▗▗▀▅▀▀▅▆▆▕▍         │           Patchy rain nearby · Leeds       │
-      ▋▐▐▘▀▁▁▋▗▐▐▐▖▁▂▂▃▘▊▍       ◀─┤  system   RAM 1.6Gi free · disk 75%        │
-    ▁▁▋▘▘▘▗▋▕▍▐▍▋▝▕▏▍▔▂▃▃▍▁▁       │           CPU +52.1°C · up 3h 41m          │
-   ▐▁▁▁▁▁▁▁▝▅▍▁▁▁▁▕▅▘▁▁▁▁▂▂▁▐      │  focus    nothing yet · try: tmr pomo      │
-    ▖▀▀▀▃▃▀▅▔▅▃▁▁▃▅▔▀▀▀▀▀▅▀▗       ├────────────────────────────────────────────┤
-     ▀▁▀▀▀▃▃▃▂▁▘▝▁▂▃▃▀▀▃▃▁▀        │  💬 Hard reality has a way of cramping     │
-       ▀▂▀▀▅▆▝▀▆▆▀▘▀▀▀▀▂▀          │     your style. -- Daniel Dennett          │
-         ▆▀▃▂▁▁▃▃▁▁▂▃▀▆            ╰────────────────────────────────────────────╯
+$ motd                                                          (170-column terminal)
+                                                                                     ___________________________
+                                                                                    / Vermouth always makes me  \
+                                                                                    | brilliant unless it makes |
+                                                                                    \ me idiotic. -- E. F. Benson/
+         ▅▔▔▀      ▀▔▔▅                                                              ---------------------------
+       ▗▂▃▔▝▂▂    ▂▂▆▔▃▂▖          ╭────────────────────────────────────────────╮    \     ____________
+       ▘▞▃▅▝▐▝▝▂▂▘▖▔▃▆▝▝▝          │  Good night 🌙  inba                       │     \    |__________|
+      ▊▍▏▃▀▅▀▅▝▅▀▘▅▔▅▂▏▋▐▎         │  Tuesday, 03 November 2026 · 22:34         │         /           /\
+      ▋▕▃▅▆▔▘▀▐▎▕▗▃▀▅▅▅▃▘▍         ├────────────────────────────────────────────┤        /           /  \
+      ▋▀▆▐▀▀▖▐▗▗▗▀▅▀▀▅▆▆▕▍         │  weather  🌦️ +10°C (feels +8°C)            │       /___________/___/|
+      ▋▐▐▘▀▁▁▋▗▐▐▐▖▁▂▂▃▘▊▍       ◀─┤           Patchy rain nearby · Leeds       │       |          |     |
+    ▁▁▋▘▘▘▗▋▕▍▐▍▋▝▕▏▍▔▂▃▃▍▁▁       │  system   RAM 1.5Gi free · disk 75%        │       |  ==\ /== |     |
+   ▐▁▁▁▁▁▁▁▝▅▍▁▁▁▁▕▅▘▁▁▁▁▂▂▁▐      │           CPU +45.1°C · up 3h 46m          │       |   O   O  | \ \ |
+    ▖▀▀▀▃▃▀▅▔▅▃▁▁▃▅▔▀▀▀▀▀▅▀▗       │  focus    nothing yet · try: tmr pomo      │       |     <    |  \ \|
+     ▀▁▀▀▀▃▃▃▂▁▘▝▁▂▃▃▀▀▃▃▁▀        ╰────────────────────────────────────────────╯      /|          |   \ \
+       ▀▂▀▀▅▆▝▀▆▆▀▘▀▀▀▀▂▀                                                              ...
 ```
-(This is the fox from Fluent Emoji. In the terminal it's in full color.)
+(The fox is from Fluent Emoji; in the terminal it's in full color. The animal is cowsay's `box`.)
 
-- **Wide terminal:** the picture is on the left and the speech bubble on the right, with the `◀─┤` tail level with the picture's middle. Whichever is shorter is centered vertically.
-- **Narrow terminal** (picture + box don't fit): the picture goes above the box, with no tail.
-- **No pictures / `MOTD_MODE=cow`:** just the box (no fortune inside), with the cow saying the fortune below.
-- **`MOTD_MODE=both`:** picture + box + cow, and the fortune moves to the cow.
+- **Wide terminal (~120+ columns):** all three side by side, each centered vertically. The `◀─┤` tail
+  joins the picture to the box.
+- **Medium:** picture + box side by side, and the animal tells the fortune below.
+- **Narrow:** picture, box and animal stacked.
+- **No pictures:** box + animal.
+- Only animals that fit the space left get picked. Widths run from ~30 (default cow) to ~80 (cupcake, turtle, dragon).
 
 ## Pictures
 
@@ -102,7 +107,10 @@ Add this to the end of `~/.zshrc`:
 - **Weather:** a single request (`format=%c|%t|%f|%C|%l`), cached per city. Offline, it shows the last
   cached value, or "unavailable". wttr.in guesses the location from your IP, so a VPN or Tailscale
   exit node gives the wrong city; set `MOTD_CITY` to fix that.
-- **Fortune in the bubble:** `fortune -s -n 120`, flattened and wrapped to the box (`fold`, max 3 lines).
+- **Picking the animal fast:** cowsay is Perl and takes ~30 ms per call. The width of every animal is measured once
+  into `~/.cache/motd/cows.tsv` (the first run takes ~2.7s), then one that fits is picked with `awk` + `shuf`, so there's one cowsay call per run.
+  Delete that file after installing new cows.
+- **Fortune in the box** (`MOTD_MODE=pic` only): `fortune -s -n 120`, flattened and wrapped (`fold`, max 3 lines).
   `fold` leaves no final newline, so the read loop uses `|| [ -n "$line" ]` to keep the last line.
 - **Focus line** reshapes `tmr stats` output, so it reads the same log as `tmr`.
 - **Cow list:** this Fedora cowsay prints `cowsay -l` one name per line with no header. Lines containing
