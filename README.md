@@ -10,6 +10,7 @@ Small, fun and useful command-line tools for my Fedora laptop, built together wi
 |------|--------|---------------|--------|
 | `tmr` | [`tmr/`](tmr/README.md) | Big clock, countdown, stopwatch, pomodoro + focus log | `tmr pomo` |
 | `sys` | [`sys/`](sys/README.md) | System health, RAM hogs, network, boot, updates, cleanup | `sys` |
+| `motd` | [`motd/`](motd/README.md) | Terminal greeting: weather, system line, focus stats, cow fortune | `motd` |
 
 Each folder's README covers that tool's commands, examples and gotchas.
 
@@ -22,8 +23,11 @@ System_scripts/
 ├── tmr/
 │   ├── tmr          ← the script (same name as the folder)
 │   └── README.md
-└── sys/
-    ├── sys
+├── sys/
+│   ├── sys
+│   └── README.md
+└── motd/
+    ├── motd
     └── README.md
 ```
 
@@ -46,7 +50,7 @@ The links point back into this repo, so editing a script here takes effect right
 - A `usage()` heredoc, shown with `-h` / `--help`
 - Subcommands handled with a `case` dispatcher, plus a sensible default with no arguments
 - Colored section banners: `printf '\033[1;<color>m...'` (32 green, 33 yellow, 35 magenta, 36 cyan)
-- Persistent data goes in `~/.local/share/<tool>/` (TSV logs), never in the repo
+- Persistent data goes in `~/.local/share/<tool>/` (TSV logs), and throwaway cache in `~/.cache/<tool>/`; never in the repo
 - Anything that uses sudo or deletes things asks first or says so in the help text
 
 ## Adding a new tool
@@ -58,6 +62,8 @@ The links point back into this repo, so editing a script here takes effect right
 
 ## Changelog
 
+- **2026-11-03** — Added `motd`: greeting, wttr.in weather (cached 30 min),
+  system one-liner, `tmr` focus stats, random cowsay fortune.
 - **2026-11-03** — Repo created. Added `tmr` (made earlier with Claude web) and `sys`.
   Fixes to `sys`: per-app memory with spaces in names, duplicate disk line on btrfs,
   dnf5 `needs-restarting`, non-zero exit on an unknown subcommand.
