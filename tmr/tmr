@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# tmr — clock / countdown / pomodoro / stopwatch, keeps system awake, logs sessions
+set -euo pipefail
+
+FONT="big"                                  # swap for whatever passed your font test earlier
+LOGDIR="$HOME/.local/share/tmr"
+LOGFILE="$LOGDIR/log.tsv"
+mkdir -p "$LOGDIR"
+
+usage() {
+    cat <<'EOF'
+Usage:
+  tmr                 live clock
+  tmr 25m [title]     countdown
+  tmr up  [title]     stopwatch
+  tmr pomo [cycles]   pomodoro set: 25m focus / 5m break, long break every 4th (default 4 cycles)
+  tmr log             show today's completed sessions
+  tmr stats           show today's totals
+EOF
+    exit 0
+}
+
+run() {
+    systemd-inhibit --what=idle:sleep:handle-lid-switch --why="tmr running" -- "$@"
+}
+
+banner() {
+    # $1 text, $2 ANSI color code (32 green, 33 yellow, 36 cyan, 35 magenta)
+    printf '\033[1;%sm%s\033[0m\n' "$2" "$1"
+}
+
+log_session() {
+    # type, duration label, title
+    printf '%s\t%s\t%s\t%s\n' "$(date '+%Y-%m-%d %H:%M')" "$1" "$2" "$3" >> "$LOGFILE"
+}
+
+countdown() {
+    local dur="$1" title="$2" color="$3" type="$4"
+    banner "▶ $title" "$color"
+    run termdown "$dur" -f "$FONT" -T "$title" -c 10 -b -e -t "Done"
+    notify-send "tmr" "$title finished" 2>/dev/null || true
+    log_session "$type" "$dur" "$title"
+}
+
+case "${1:-clock}" in
+    -h|--help) usage ;;
+
+    clock) run termdown -z -f "$FONT" ;;
+
+    up)
+        TITLE="${2:-Session}"
+        banner "▶ $TITLE" 32
+        run termdown -f "$FONT" -T "$TITLE"
+        ;;
+
+    log)
+        TODAY=$(date '+%Y-%m-%d')
+        if [ -f "$LOGFILE" ] && grep -q "^$TODAY" "$LOGFILE"; then
+            grep "^$TODAY" "$LOGFILE" | column -t -s $'\t'
+        else
+            echo "No sessions logged today."
+        fi
+        ;;
+
+    stats)
+        TODAY=$(date '+%Y-%m-%d')
+        if [ -f "$LOGFILE" ]; then
+            read -r N MIN <<< "$(awk -F'\t' -v d="$TODAY" \
+                '$1 ~ d && $2=="focus" {gsub("m","",$3); n++; sum+=$3} END{print n+0, sum+0}' "$LOGFILE")"
+            echo "Today: $N focus sessions, ${MIN} min total"
+        else
+            echo "No sessions logged yet."
+        fi
+        ;;
+
+    pomo)
+        CYCLES="${2:-4}"
+        for ((i=1; i<=CYCLES; i++)); do
+            countdown "25m" "Focus $i/$CYCLES" 32 focus
+            if (( i % 4 == 0 )); then
+                countdown "15m" "Long Break" 36 break
+            else
+                countdown "5m" "Break" 33 break
+            fi
+        done
+        banner "Pomodoro set complete ($CYCLES cycles)" 35
+        ;;
+
+    *)
+        TITLE="${2:-Timer}"
+        countdown "$1" "$TITLE" 32 focus
+        ;;
+esac
