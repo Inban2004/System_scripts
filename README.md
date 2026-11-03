@@ -20,6 +20,7 @@ Each folder's README covers that tool's commands, examples and gotchas.
 System_scripts/
 ├── README.md        ← you are here (index of all tools)
 ├── install.sh       ← symlinks every tool into ~/bin
+├── TODO.md          ← planned changes and future tool ideas
 ├── tmr/
 │   ├── tmr          ← the script (same name as the folder)
 │   └── README.md
