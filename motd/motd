@@ -1,25 +1,35 @@
 #!/usr/bin/env bash
-# motd — terminal greeting: time, weather, quick system line, focus stats, a fortune
+# motd — terminal greeting: random picture + info box (weather, system, focus) + cow fortune
 set -euo pipefail
 
-CACHEDIR="$HOME/.cache/motd"
+CITY="${MOTD_CITY:-}"                       # empty = wttr.in guesses from your IP
+PICDIR="${MOTD_PICS:-$HOME/Pictures/motd}"  # drop .png/.jpg/.gif/.webp here
+MODE="${MOTD_MODE:-auto}"                   # auto | pic | cow | both | none
+PIC_SIZE="30x15"                            # chafa cells, roughly 240x240 px
+BOX_W=44                                    # inner width of the info box
 WEATHER_TTL=1800                            # seconds before weather is fetched again
-WEATHER_FMT='%l:+%c+%t+(feels+%f),+%C'      # wttr.in format codes
-mkdir -p "$CACHEDIR"
+CACHEDIR="$HOME/.cache/motd"
+mkdir -p "$CACHEDIR/pics"
 
 usage() { cat <<'EOF'
 Usage:
-  motd                full greeting (default)
-  motd short          one-line version, no cow
-  motd weather [city] weather now (default: auto-detect from IP)
-  motd cow            just a random cow with a fortune
+  motd                picture + info box (+ cow, see MOTD_MODE)
+  motd short          one-line version
+  motd weather [city] weather now (default: MOTD_CITY or auto-detect)
+  motd cow            random cow with a fortune
+  motd pic            random picture from the pics folder
+  motd pics           list the pics folder
+
+Environment:
+  MOTD_CITY=Chennai   fixed weather city
+  MOTD_PICS=dir       picture folder (default ~/Pictures/motd)
+  MOTD_MODE=auto      auto (pic if any, else cow) | pic | cow | both | none
 EOF
 exit "${1:-0}"; }
 
-banner() { printf '\033[1;%sm%s\033[0m\n' "$2" "$1"; }
-have()   { command -v "$1" >/dev/null 2>&1; }
+have() { command -v "$1" >/dev/null 2>&1; }
 
-# ── pieces ───────────────────────────────────────────────────────────
+# ── data ─────────────────────────────────────────────────────────────
 greeting() {
     local h; h=$(date +%-H)
     if   (( h < 5 ));  then echo "Still up? 🌙"
@@ -30,40 +40,173 @@ greeting() {
     fi
 }
 
-weather() {
-    # $1 optional city; auto-location is cached, explicit cities are not
-    local city="${1:-}" cache="$CACHEDIR/weather"
-    if [ -n "$city" ]; then
-        curl -fs -m 4 "wttr.in/${city// /+}?format=$WEATHER_FMT" || echo "weather unavailable"
-        echo; return
-    fi
+weather_raw() {
+    # prints "icon|temp|feels|condition|location", cached per city; empty if unavailable
+    local city="${1:-$CITY}" cache url
+    cache="$CACHEDIR/weather-${city:-auto}"
+    cache="${cache// /_}"
+    url="wttr.in/${city// /+}?format=%c|%t|%f|%C|%l"
+
     if [ -s "$cache" ] && (( $(date +%s) - $(stat -c %Y "$cache") < WEATHER_TTL )); then
         cat "$cache"; return
     fi
-    if curl -fs -m 4 "wttr.in/?format=$WEATHER_FMT" > "$cache.new" && [ -s "$cache.new" ]; then
-        mv "$cache.new" "$cache"; echo >> "$cache"; cat "$cache"
+    if curl -fs -m 4 "$url" > "$cache.new" 2>/dev/null && grep -q '|' "$cache.new"; then
+        mv "$cache.new" "$cache"
     else
-        rm -f "$cache.new"
-        [ -s "$cache" ] && cat "$cache" || echo "weather unavailable (offline?)"
+        rm -f "$cache.new"          # offline: fall back to the old cache if there is one
+    fi
+    [ -s "$cache" ] && cat "$cache" || true
+}
+
+# split weather_raw into W_ICON W_TEMP W_FEELS W_COND W_LOC
+load_weather() {
+    local raw; raw=$(weather_raw "${1:-}")
+    IFS='|' read -r W_ICON W_TEMP W_FEELS W_COND W_LOC <<< "$raw"
+    W_ICON="${W_ICON%% *}"          # wttr pads the icon with spaces
+    W_LOC="${W_LOC%%,*}"            # "Leeds, England, GB" -> "Leeds"
+}
+
+uptime_short() {
+    local s d h m out=""
+    read -r s _ < /proc/uptime; s=${s%.*}
+    d=$(( s / 86400 )); h=$(( s % 86400 / 3600 )); m=$(( s % 3600 / 60 ))
+    (( d > 0 )) && out="${d}d "
+    (( h > 0 )) && out+="${h}h "
+    echo "${out}${m}m"
+}
+
+load_system() {
+    S_RAM=$(free -h | awk '/^Mem:/ {print $7}')
+    S_DISK=$(df -h / | awk 'NR==2 {print $5}')
+    S_TEMP=$(sensors 2>/dev/null | awk '/Tctl|Package id 0/ {print $2; exit}' || true)
+    S_UP=$(uptime_short)
+}
+
+focus_line() {
+    # reshape "Today: 2 focus sessions, 50 min total" from tmr stats
+    local out
+    have tmr || { echo "tmr not installed"; return; }
+    out=$(tmr stats 2>/dev/null || true)
+    if [[ $out =~ Today:\ ([0-9]+)\ focus\ sessions,\ ([0-9]+)\ min ]]; then
+        if (( BASH_REMATCH[1] == 0 )); then echo "nothing yet · try: tmr pomo"
+        else echo "${BASH_REMATCH[1]} sessions · ${BASH_REMATCH[2]} min today"; fi
+    else
+        echo "nothing yet · try: tmr pomo"
     fi
 }
 
-sysline() {
-    local avail disk temp up
-    avail=$(free -h | awk '/^Mem:/ {print $7}')
-    disk=$(df -h / | awk 'NR==2 {print $5}')
-    temp=$(sensors 2>/dev/null | awk '/Tctl|Package id 0/ {print $2; exit}' || true)
-    up=$(uptime -p | sed 's/^up //')
-    printf 'RAM free %s · disk %s used · %s · up %s\n' "$avail" "$disk" "${temp:-temp n/a}" "$up"
+# ── pictures ─────────────────────────────────────────────────────────
+list_pics() {
+    shopt -s nullglob nocaseglob
+    PICS=("$PICDIR"/*.{png,jpg,jpeg,gif,webp})
+    shopt -u nullglob nocaseglob
 }
 
-focus() {
-    have tmr && tmr stats 2>/dev/null || echo "tmr not installed"
+render_pic() {
+    # $1 image -> cached chafa output on stdout
+    local img="$1" key out
+    key=$(printf '%s|%s|%s' "$img" "$(stat -c '%Y%s' "$img")" "$PIC_SIZE" | md5sum | cut -c1-16)
+    out="$CACHEDIR/pics/$key"
+    if [ ! -s "$out" ]; then
+        chafa -f symbols --symbols block --size "$PIC_SIZE" \
+              --polite on --animate off "$img" > "$out" 2>/dev/null || { rm -f "$out"; return 1; }
+    fi
+    cat "$out"
+}
+
+random_pic() {
+    have chafa || return 1
+    list_pics
+    (( ${#PICS[@]} > 0 )) || return 1
+    render_pic "${PICS[RANDOM % ${#PICS[@]}]}"
+}
+
+# ── drawing ──────────────────────────────────────────────────────────
+# Box rows are drawn with absolute cursor columns (ESC[nG), so emoji of any
+# width can't push the right border out of line.
+C_RESET=$'\033[0m'; C_DIM=$'\033[2m'; C_BOX=$'\033[38;5;244m'
+C_HEAD=$'\033[1;35m'; C_DATE=$'\033[1;36m'
+C_W=$'\033[1;33m'; C_S=$'\033[1;32m'; C_F=$'\033[1;34m'
+
+build_rows() {
+    load_weather; load_system
+    ROWS=(TOP
+        "  ${C_HEAD}$(greeting)  $(whoami)${C_RESET}"
+        "  ${C_DATE}$(date '+%A, %d %B %Y · %H:%M')${C_RESET}"
+        SEP)
+    if [ -n "$W_TEMP" ]; then
+        ROWS+=("  ${C_W}weather${C_RESET}  ${W_ICON} ${W_TEMP} ${C_DIM}(feels ${W_FEELS})${C_RESET}"
+               "           ${W_COND} · ${W_LOC}")
+    else
+        ROWS+=("  ${C_W}weather${C_RESET}  ${C_DIM}unavailable (offline?)${C_RESET}")
+    fi
+    ROWS+=("  ${C_S}system${C_RESET}   RAM ${S_RAM} free · disk ${S_DISK}"
+           "           CPU ${S_TEMP:-n/a} · up ${S_UP}"
+           "  ${C_F}focus${C_RESET}    $(focus_line)"
+           BOT)
+}
+
+box_row() {
+    # $1 row, $2 left column of the box
+    local row="$1" col="$2" right=$(( $2 + BOX_W + 1 )) hr
+    printf -v hr '%*s' "$BOX_W" ''; hr="${hr// /─}"
+    case "$row" in
+        TOP) printf '\033[%dG%s╭%s╮%s' "$col" "$C_BOX" "$hr" "$C_RESET" ;;
+        SEP) printf '\033[%dG%s├%s┤%s' "$col" "$C_BOX" "$hr" "$C_RESET" ;;
+        BOT) printf '\033[%dG%s╰%s╯%s' "$col" "$C_BOX" "$hr" "$C_RESET" ;;
+        *)   printf '\033[%dG%s│%s%s\033[%dG%s│%s' \
+                 "$col" "$C_BOX" "$C_RESET" "$row" "$right" "$C_BOX" "$C_RESET" ;;
+    esac
+}
+
+draw() {
+    local pic="" show_pic=0 show_cow=0 cols pw=0 left i n off_p=0 off_b=0
+    local -a PL=()
+
+    list_pics
+    case "$MODE" in
+        auto) if (( ${#PICS[@]} > 0 )) && have chafa; then show_pic=1; else show_cow=1; fi ;;
+        pic)  show_pic=1 ;;
+        cow)  show_cow=1 ;;
+        both) show_pic=1; show_cow=1 ;;
+        none) ;;
+        *)    echo "bad MOTD_MODE: $MODE" >&2; exit 1 ;;
+    esac
+    if (( show_pic )); then
+        pic=$(random_pic || true)
+        [ -n "$pic" ] && mapfile -t PL <<< "$pic"
+        (( ${#PL[@]} > 0 )) && pw=$(sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' <<< "$pic" | wc -L)
+    fi
+
+    build_rows
+    cols=$(tput cols 2>/dev/null || echo 80)
+    echo
+
+    if (( ${#PL[@]} > 0 )) && (( pw + 3 + BOX_W + 2 <= cols )); then
+        # side by side: picture left, box right, the shorter one centred vertically
+        left=$(( pw + 4 ))
+        n=$(( ${#PL[@]} > ${#ROWS[@]} ? ${#PL[@]} : ${#ROWS[@]} ))
+        off_p=$(( (n - ${#PL[@]}) / 2 )); off_b=$(( (n - ${#ROWS[@]}) / 2 ))
+        for (( i = 0; i < n; i++ )); do
+            local p=$(( i - off_p )) b=$(( i - off_b ))
+            printf ' '
+            if (( p >= 0 && p < ${#PL[@]} )); then printf '%s%s' "${PL[p]}" "$C_RESET"; fi
+            if (( b >= 0 && b < ${#ROWS[@]} )); then box_row "${ROWS[b]}" "$left"; fi
+            printf '\n'
+        done
+    else
+        # narrow terminal (or no picture): stack them
+        for line in "${PL[@]}"; do printf ' %s%s\n' "$line" "$C_RESET"; done
+        for row in "${ROWS[@]}"; do box_row "$row" 2; printf '\n'; done
+    fi
+
+    if (( show_cow )); then echo; cow; fi
 }
 
 cow() {
     have fortune || { echo "install fortune-mod for fortunes"; return; }
     if have cowsay; then
+        # this cowsay lists one name per line; drop any "Cow files in ...:" header
         local cows; mapfile -t cows < <(cowsay -l | grep -v ':' | tr ' ' '\n' | grep -v '^$')
         fortune -s | cowsay -f "${cows[RANDOM % ${#cows[@]}]}"
     else
@@ -74,19 +217,30 @@ cow() {
 # ── dispatcher ───────────────────────────────────────────────────────
 case "${1:-full}" in
     -h|--help) usage ;;
-    full)
-        echo
-        banner "$(greeting)  $(whoami)" 35
-        banner "$(date '+%A, %d %B %Y · %H:%M')" 36
-        echo
-        printf '\033[1;33m%-8s\033[0m %s\n' "weather" "$(weather)"
-        printf '\033[1;32m%-8s\033[0m %s\n' "system"  "$(sysline)"
-        printf '\033[1;34m%-8s\033[0m %s\n' "focus"   "$(focus)"
-        echo
-        cow
+    full) draw ;;
+    short)
+        load_weather "${2:-}"; load_system
+        printf '%s · %s %s %s · RAM %s free · up %s\n' "$(date '+%a %H:%M')" \
+            "${W_ICON:-}" "${W_TEMP:-weather n/a}" "${W_COND:-}" "$S_RAM" "$S_UP"
         ;;
-    short)   printf '%s · %s · %s\n' "$(date '+%a %H:%M')" "$(weather)" "$(sysline)" ;;
-    weather) weather "${2:-}" ;;
-    cow)     cow ;;
-    *)       echo "unknown subcommand: $1" >&2; usage 1 >&2 ;;
+    weather)
+        load_weather "${2:-}"
+        if [ -n "$W_TEMP" ]; then
+            echo "${W_LOC}: ${W_ICON} ${W_TEMP} (feels ${W_FEELS}), ${W_COND}"
+        else
+            echo "weather unavailable"
+        fi
+        ;;
+    cow) cow ;;
+    pic)
+        have chafa || { echo "chafa not installed (sudo dnf install chafa)" >&2; exit 1; }
+        random_pic || { echo "no pictures in $PICDIR" >&2; exit 1; }
+        ;;
+    pics)
+        list_pics
+        echo "$PICDIR: ${#PICS[@]} picture(s)"
+        for f in "${PICS[@]}"; do echo "  ${f##*/}"; done
+        [ -d "$PICDIR" ] || echo "  (folder missing: mkdir -p $PICDIR)"
+        ;;
+    *) echo "unknown subcommand: $1" >&2; usage 1 >&2 ;;
 esac
