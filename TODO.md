@@ -53,7 +53,10 @@ Target look:
 - [x] Keep a cached run under ~0.2s, since it runs on every terminal open
 
 ### 4. Last step
-- [ ] Drop some pictures into `~/Pictures/motd/` and check the look in Tilix
+- [x] Drop some pictures into `~/Pictures/motd/` (14 Fluent Emoji 3D + 3 of my wallpapers)
+- [x] Cowsay-style: picture "says" the box via a `◀─┤` tail, fortune inside the bubble
+- [ ] Check the look in real Tilix and tune `PIC_SIZE` / `BOX_W` by eye
+- [ ] Maybe remove the 3 big wallpapers (gargantua, japan, sukuna): detailed photos look noisy as blocks
 - [ ] Add to the end of `~/.zshrc`:
       `[[ -o interactive ]] && command -v motd >/dev/null && motd`
 

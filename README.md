@@ -10,7 +10,7 @@ Small, fun and useful command-line tools for my Fedora laptop, built together wi
 |------|--------|---------------|--------|
 | `tmr` | [`tmr/`](tmr/README.md) | Big clock, countdown, stopwatch, pomodoro + focus log | `tmr pomo` |
 | `sys` | [`sys/`](sys/README.md) | System health, RAM hogs, network, boot, updates, cleanup | `sys` |
-| `motd` | [`motd/`](motd/README.md) | Terminal greeting: random picture + info box (weather, system, focus), cow fortune | `motd` |
+| `motd` | [`motd/`](motd/README.md) | Cowsay-style greeting: random picture "says" a bubble with weather, system, focus, fortune | `motd` |
 
 Each folder's README covers that tool's commands, examples and gotchas.
 
@@ -63,6 +63,8 @@ The links point back into this repo, so editing a script here takes effect right
 
 ## Changelog
 
+- **2026-11-03** — `motd`: cowsay-style speech bubble (`◀─┤` tail, fortune inside the box),
+  14 Fluent Emoji 3D starter pictures (MIT), `motd pics` pre-renders, fixed the fortune losing its last line.
 - **2026-11-03** — `motd` v2: rounded info box (one item per line), random `chafa`
   picture from `~/Pictures/motd` beside it (cached render), `MOTD_CITY`/`MOTD_PICS`/`MOTD_MODE`
   settings, shorter uptime, `pic`/`pics` subcommands. Not in `~/.zshrc` yet.
