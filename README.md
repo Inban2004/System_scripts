@@ -6,8 +6,11 @@ Small, fun and useful command-line tools for my Fedora laptop, built together wi
 
 ## Tools
 
+> **Forgot a command?** Run **`cmds`** for the list, `cmds <tool>` for details, or `cmds find <word>` to search.
+
 | Tool | Folder | What it's for | Try it |
 |------|--------|---------------|--------|
+| `cmds` | [`cmds/`](cmds/README.md) | Cheat sheet of all these tools, built live from the repo | `cmds` |
 | `tmr` | [`tmr/`](tmr/README.md) | Big clock, countdown, stopwatch, pomodoro + focus log | `tmr pomo` |
 | `sys` | [`sys/`](sys/README.md) | System health, RAM hogs, network, boot, updates, cleanup | `sys` |
 | `typer` | [`typer/`](typer/README.md) | Typing-speed game: live green/red, WPM + accuracy, best scores, sparkline | `typer 5` |
@@ -35,8 +38,11 @@ System_scripts/
 ├── typer/
 │   ├── typer
 │   └── README.md
-└── tidy/
-    ├── tidy
+├── tidy/
+│   ├── tidy
+│   └── README.md
+└── cmds/
+    ├── cmds
     └── README.md
 ```
 
@@ -55,8 +61,10 @@ The links point back into this repo, so editing a script here takes effect right
 
 ## Shared conventions (keep new scripts consistent)
 
+- Line 2 of every script: `# <name> — <description>` (`cmds` shows it)
 - Bash with `set -euo pipefail`
-- A `usage()` heredoc, shown with `-h` / `--help`
+- A `usage()` heredoc, shown with `-h` / `--help`. Command lines look like `  <name> <args>   <desc>`, with
+  **2+ spaces** before the description (`cmds find` / `cmds tip` rely on it; see `cmds/README.md`)
 - Subcommands handled with a `case` dispatcher, plus a sensible default with no arguments
 - Colored section banners: `printf '\033[1;<color>m...'` (32 green, 33 yellow, 35 magenta, 36 cyan)
 - Persistent data goes in `~/.local/share/<tool>/` (TSV logs), and throwaway cache in `~/.cache/<tool>/`; never in the repo
@@ -66,11 +74,13 @@ The links point back into this repo, so editing a script here takes effect right
 
 1. `mkdir foo && $EDITOR foo/foo` (follow the conventions above)
 2. Write `foo/README.md`: purpose, quick-reference table, examples, gotchas
-3. Add a row to the **Tools** table above
+3. Add a row to the **Tools** table above, then check it with `cmds` and `cmds <name>`
 4. `./install.sh`, then commit: `git add foo README.md && git commit -m "foo: add ..."`
 
 ## Changelog
 
+- **2026-11-03** — Added `cmds`: live cheat sheet (list, per-tool usage, find, tip) read from the scripts.
+  `motd` box shows a random `tip`. Realigned the `motd`/`tidy` usage columns (2-space gap rule).
 - **2026-11-03** — Added `tidy`: dry-run-by-default Downloads sorter with 11 categories,
   clash-safe names, per-move logs, `undo`, `history`, `old`.
 - **2026-11-03** — Added `typer`: typing-speed game with live coloring, WPM/accuracy,

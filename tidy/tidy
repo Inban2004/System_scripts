@@ -24,12 +24,12 @@ SKIP_EXT="part crdownload tmp download"   # unfinished downloads: never touch
 
 usage() { cat <<'EOF'
 Usage:
-  tidy [dir]            dry run: show what would move where (default ~/Downloads)
-  tidy -v [dir]         dry run listing every file
-  tidy go [dir]         actually move the files (logged, undoable)
-  tidy undo             put back everything from the last `tidy go`
-  tidy history          past runs
-  tidy old [days] [dir] files not modified in N days (default 90); lists only, never deletes
+  tidy [dir]             dry run: show what would move where (default ~/Downloads)
+  tidy -v [dir]          dry run listing every file
+  tidy go [dir]          actually move the files (logged, undoable)
+  tidy undo              put back everything from the last `tidy go`
+  tidy history           past runs
+  tidy old [days] [dir]  files not modified in N days (default 90); lists only, never deletes
 
 Leaves alone: folders, hidden files, unfinished downloads (.part...), unknown types.
 EOF

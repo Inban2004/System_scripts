@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# cmds — cheat sheet for all my tools, built live from the repo so it's never out of date
+set -euo pipefail
+
+# the repo is two levels up from the real script (~/bin/cmds is a symlink)
+REPO="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
+
+usage() { cat <<'EOF'
+Usage:
+  cmds                list every tool with what it does
+  cmds <tool>         that tool's full usage (e.g. cmds tidy)
+  cmds all            every tool's usage on one page
+  cmds find <word>    search all commands (e.g. cmds find undo)
+  cmds tip            one random command to try
+EOF
+exit "${1:-0}"; }
+
+B=$'\033[1m'; C=$'\033[1;36m'; G=$'\033[1;32m'; D=$'\033[2m'; X=$'\033[0m'
+
+# tools = folders holding a script of the same name
+tools() {
+    local d
+    for d in "$REPO"/*/; do
+        d="${d%/}"; [ -f "$d/${d##*/}" ] && echo "${d##*/}"
+    done
+}
+
+# line 2 of every script: "# name — description"
+describe() { sed -n '2s/^# [^ ]* — //p' "$REPO/$1/$1"; }
+
+# the usage heredoc, read from the source (not run, so nothing executes)
+usage_of() {
+    sed -n "/^usage() *{/,/^EOF/p" "$REPO/$1/$1" | sed '1d;$d'
+}
+
+# just the command lines: "  tool args   description"
+command_lines() {
+    local t
+    for t in $(tools); do usage_of "$t" | grep -E "^  $t( |$)" || true; done
+}
+
+list() {
+    local t n
+    n=$(tools | wc -l)
+    echo
+    echo "${B}your tools${X} ${D}($n · ${REPO/#$HOME/\~})${X}"
+    echo
+    for t in $(tools); do printf "  ${C}%-7s${X} %s\n" "$t" "$(describe "$t")"; done
+    echo
+    echo "  ${D}more:${X} ${G}cmds <tool>${X} full usage · ${G}cmds find <word>${X} search · ${G}cmds tip${X} random idea"
+    echo
+}
+
+show() {
+    local t="$1"
+    printf "\n${C}%s${X} — %s\n\n" "$t" "$(describe "$t")"
+    usage_of "$t"
+    printf "\n${D}docs: %s/README.md${X}\n\n" "${REPO/#$HOME/\~}/$t"
+}
+
+find_cmd() {
+    local hits
+    hits=$(command_lines | grep -i -- "$1" || true)
+    if [ -n "$hits" ]; then
+        sed -E "s/^  ([a-z]+)/  ${C}\1${X}/" <<< "$hits"
+    else
+        echo "no command mentions \"$1\". Try: cmds"
+    fi
+}
+
+tip() {
+    # "tidy old [days] [dir]|files not modified in N days..." -> split on the 2+ space gap
+    command_lines | shuf -n1 | sed -E 's/^ +//; s/ {2,}/|/'
+}
+
+case "${1:-}" in
+    -h|--help) usage ;;
+    "")        list ;;
+    all)       for t in $(tools); do show "$t"; done ;;
+    find)      [ -n "${2:-}" ] || usage 1 >&2; find_cmd "$2" ;;
+    tip)       tip | sed 's/|/   /' ;;
+    tip-raw)   tip ;;                                   # for motd: "command|description"
+    *)
+        if [ -f "$REPO/$1/$1" ]; then show "$1"
+        else echo "no tool called \"$1\". Your tools: $(tools | tr '\n' ' ')" >&2; exit 1; fi
+        ;;
+esac

@@ -14,12 +14,12 @@ mkdir -p "$CACHEDIR/pics"
 
 usage() { cat <<'EOF'
 Usage:
-  motd                picture | info box | cow (see MOTD_MODE)
-  motd short          one-line version
-  motd weather [city] weather now (default: MOTD_CITY or auto-detect)
-  motd cow            random cow with a fortune
-  motd pic            random picture from the pics folder
-  motd pics           list the pics folder (and pre-render them)
+  motd                 picture | info box | cow (see MOTD_MODE)
+  motd short           one-line version
+  motd weather [city]  weather now (default: MOTD_CITY or auto-detect)
+  motd cow             random cow with a fortune
+  motd pic             random picture from the pics folder
+  motd pics            list the pics folder (and pre-render them)
 
 Environment:
   MOTD_CITY=Chennai   fixed weather city
@@ -127,7 +127,7 @@ random_pic() {
 # width can't push the right border out of line.
 C_RESET=$'\033[0m'; C_DIM=$'\033[2m'; C_BOX=$'\033[38;5;244m'
 C_HEAD=$'\033[1;35m'; C_DATE=$'\033[1;36m'
-C_W=$'\033[1;33m'; C_S=$'\033[1;32m'; C_F=$'\033[1;34m'
+C_W=$'\033[1;33m'; C_S=$'\033[1;32m'; C_F=$'\033[1;34m'; C_T=$'\033[1;35m'
 
 fortune_rows() {
     # short fortune, flattened and wrapped to fit inside the bubble (max 3 lines)
@@ -153,6 +153,16 @@ build_rows() {
     ROWS+=("  ${C_S}system${C_RESET}   RAM ${S_RAM} free · disk ${S_DISK}"
            "           CPU ${S_TEMP:-n/a} · up ${S_UP}"
            "  ${C_F}focus${C_RESET}    $(focus_line)")
+    # a random command from `cmds`, so the tools don't get forgotten
+    if have cmds; then
+        local tip tcmd tdesc max=$(( BOX_W - 12 ))
+        tip=$(cmds tip-raw 2>/dev/null || true)
+        tcmd="${tip%%|*}"; tdesc="${tip#*|}"
+        (( ${#tcmd} > max )) && tcmd="${tcmd:0:max-1}…"
+        (( ${#tdesc} > max )) && tdesc="${tdesc:0:max-1}…"
+        [ -n "$tip" ] && ROWS+=("  ${C_T}tip${C_RESET}      ${tcmd}"
+                                "           ${C_DIM}${tdesc}${C_RESET}")
+    fi
     if (( with_fortune )); then
         ROWS+=(SEP)
         while IFS= read -r line || [ -n "$line" ]; do   # fold leaves no final newline

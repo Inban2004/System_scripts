@@ -64,6 +64,7 @@ Target look:
 ---
 
 ## Upcoming tools
+- [x] `cmds` — cheat sheet so I don't forget my commands, plus a tip in motd (built 2026-11-03)
 - [x] `typer` — typing-speed game: random sentence, WPM + accuracy, best scores in `~/.local/share/typer/` (built 2026-11-03)
   - [ ] idea: show today's best in `motd`'s focus area
   - [ ] idea: `typer code` mode with shell commands as sentences

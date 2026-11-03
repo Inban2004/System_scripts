@@ -2,7 +2,7 @@
 
 A "message of the day" for when you open a terminal, in three columns:
 
-**random picture** (chafa) **│ info box** (greeting, date, weather, system, `tmr` focus) **│ cowsay animal** telling a fortune
+**random picture** (chafa) **│ info box** (greeting, date, weather, system, `tmr` focus, a random `cmds` **tip**) **│ cowsay animal** telling a fortune
 
 On a narrower terminal, the animal moves below. With no pictures, it's just the box and the animal.
 
@@ -112,6 +112,8 @@ Add this to the end of `~/.zshrc`:
   Delete that file after installing new cows.
 - **Fortune in the box** (`MOTD_MODE=pic` only): `fortune -s -n 120`, flattened and wrapped (`fold`, max 3 lines).
   `fold` leaves no final newline, so the read loop uses `|| [ -n "$line" ]` to keep the last line.
+- **Tip line:** `cmds tip-raw` gives a random command from any of your tools, so you don't forget them.
+  Both parts are cut to fit the box (`…`). It's skipped if `cmds` isn't installed.
 - **Focus line** reshapes `tmr stats` output, so it reads the same log as `tmr`.
 - **Cow list:** this Fedora cowsay prints `cowsay -l` one name per line with no header. Lines containing
   `:` are filtered out in case another version adds a header.
