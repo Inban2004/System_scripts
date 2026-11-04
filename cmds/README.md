@@ -1,8 +1,8 @@
 # cmds — cheat sheet for all my tools
 
 Can't remember what you have or how a command works? Type `cmds`.
-It's built **live from the repo**: every tool folder is read on the spot, so a new tool shows up
-automatically, with no list to maintain.
+It's built **live from `~/bin`**: it follows each symlink that `install.sh` made back to `<repo>/<name>/<name>`,
+so a new tool shows up automatically, **from any repo (public or private)**, with no list to maintain.
 
 - **Source:** `cmds/cmds`
 - **Installed as:** `~/bin/cmds` (symlink via `./install.sh`)
@@ -24,9 +24,9 @@ automatically, with no list to maintain.
 ```
 $ cmds
 
-your tools (6 · ~/claude_code/scripts)
+your tools (6 · from ~/bin)
 
-  cmds    cheat sheet for all my tools, built live from the repo so it's never out of date
+  cmds    cheat sheet for all my tools, built live from ~/bin so it's never out of date
   motd    terminal greeting: random picture | info box (weather, system, focus) | cowsay fortune
   sys     Fedora system health, maintenance and cleanup dispatcher
   tidy    sort a messy folder (default ~/Downloads) into type folders; dry run first, undo anytime
@@ -47,7 +47,7 @@ tmr pomo [cycles]   pomodoro set: 25m focus / 5m break, long break every 4th (de
 
 `cmds` relies on the repo conventions, so **every new tool needs these** or it won't show up properly:
 
-1. **Layout:** `<name>/<name>` (same as `install.sh` needs).
+1. **Layout:** `<name>/<name>`, installed with that repo's `install.sh` (the `~/bin/<name>` symlink is how `cmds` finds it).
 2. **Line 2 of the script** is the description: `# <name> — <what it does>` (with an em dash `—`).
 3. **A `usage()` function holding a heredoc** (`cat <<'EOF' ... EOF`), where each command line looks like
    `  <name> <args>   <description>`: two leading spaces, then **at least 2 spaces** between the
@@ -64,5 +64,7 @@ for t in */; do t=${t%/}; sed -n "/^usage() *{/,/^EOF/p" $t/$t | grep -E "^  $t(
 
 ## Notes
 - `cmds tip-raw` prints `command|description` and is what motd uses.
-- The repo path is found from the symlink (`readlink -f`), so it keeps working if you clone the repo elsewhere
-  and re-run `install.sh`.
+- **How tools are found:** every symlink in `~/bin` whose real path ends in `<name>/<name>`. Plain files (like `tmr.bak`)
+  and links to other things are ignored. No repo path is written in the script, so private repos stay out of
+  this public code.
+- Moved or re-cloned a repo? Re-run its `install.sh` and `cmds` follows the new links.

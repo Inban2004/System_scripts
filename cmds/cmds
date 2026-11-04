@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
-# cmds — cheat sheet for all my tools, built live from the repo so it's never out of date
+# cmds — cheat sheet for all my tools, built live from ~/bin so it's never out of date
 set -euo pipefail
 
-# the repo is two levels up from the real script (~/bin/cmds is a symlink)
-REPO="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
+# tools are found through the ~/bin symlinks that install.sh makes (<repo>/<name>/<name>),
+# so tools from any repo show up, public or private, without naming the repos here
+BIN="$HOME/bin"
+declare -A SRC=()                           # tool name -> real script path
+for link in "$BIN"/*; do
+    [ -L "$link" ] || continue
+    real=$(readlink -f "$link") || continue
+    name="${link##*/}"
+    [ -f "$real" ] && [ "$(basename "$(dirname "$real")")" = "$name" ] && SRC[$name]="$real"
+done
+unset link real name
 
 usage() { cat <<'EOF'
 Usage:
@@ -17,21 +26,18 @@ exit "${1:-0}"; }
 
 B=$'\033[1m'; C=$'\033[1;36m'; G=$'\033[1;32m'; D=$'\033[2m'; X=$'\033[0m'
 
-# tools = folders holding a script of the same name
-tools() {
-    local d
-    for d in "$REPO"/*/; do
-        d="${d%/}"; [ -f "$d/${d##*/}" ] && echo "${d##*/}"
-    done
-}
+tools() { printf '%s\n' "${!SRC[@]}" | sort; }
 
 # line 2 of every script: "# name — description"
-describe() { sed -n '2s/^# [^ ]* — //p' "$REPO/$1/$1"; }
+describe() { sed -n '2s/^# [^ ]* — //p' "${SRC[$1]}"; }
 
 # the usage heredoc, read from the source (not run, so nothing executes)
 usage_of() {
-    sed -n "/^usage() *{/,/^EOF/p" "$REPO/$1/$1" | sed '1d;$d'
+    sed -n "/^usage() *{/,/^EOF/p" "${SRC[$1]}" | sed '1d;$d'
 }
+
+# folder holding the tool (for the README path), shown with ~
+tool_dir() { local d; d=$(dirname "${SRC[$1]}"); echo "${d/#$HOME/\~}"; }
 
 # just the command lines: "  tool args   description"
 command_lines() {
@@ -43,7 +49,7 @@ list() {
     local t n
     n=$(tools | wc -l)
     echo
-    echo "${B}your tools${X} ${D}($n · ${REPO/#$HOME/\~})${X}"
+    echo "${B}your tools${X} ${D}($n · from ~/bin)${X}"
     echo
     for t in $(tools); do printf "  ${C}%-7s${X} %s\n" "$t" "$(describe "$t")"; done
     echo
@@ -55,7 +61,7 @@ show() {
     local t="$1"
     printf "\n${C}%s${X} — %s\n\n" "$t" "$(describe "$t")"
     usage_of "$t"
-    printf "\n${D}docs: %s/README.md${X}\n\n" "${REPO/#$HOME/\~}/$t"
+    printf "\n${D}docs: %s/README.md${X}\n\n" "$(tool_dir "$t")"
 }
 
 find_cmd() {
@@ -81,7 +87,7 @@ case "${1:-}" in
     tip)       tip | sed 's/|/   /' ;;
     tip-raw)   tip ;;                                   # for motd: "command|description"
     *)
-        if [ -f "$REPO/$1/$1" ]; then show "$1"
+        if [ -n "${SRC[$1]:-}" ]; then show "$1"
         else echo "no tool called \"$1\". Your tools: $(tools | tr '\n' ' ')" >&2; exit 1; fi
         ;;
 esac

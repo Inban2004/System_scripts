@@ -70,3 +70,9 @@ Target look:
   - [ ] idea: `typer code` mode with shell commands as sentences
 - [x] `tidy` — sort `~/Downloads` into folders by file type, with a dry run (built 2026-11-03; dry run is the default)
   - [ ] actually run `tidy go` on ~/Downloads when ready
+
+## More tool ideas (from 2026-11-04)
+- [ ] `decode` — CTF toolbox: try base64/hex/rot13/url/binary on a string, hash + identify hashes
+- [ ] `ramwatch` — background notify when RAM is low, naming the top hog
+- [ ] `wall` — random KDE wallpaper from a folder, daily or `wall next`
+- [ ] `matrix` / `life` — terminal eye candy

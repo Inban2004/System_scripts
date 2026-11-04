@@ -18,6 +18,7 @@ Small, fun and useful command-line tools for my Fedora laptop, built together wi
 | `motd` | [`motd/`](motd/README.md) | Greeting: picture │ info box (weather, system, focus) │ cowsay animal with a fortune | `motd` |
 
 Each folder's README covers that tool's commands, examples and gotchas.
+Some personal tools live in a separate **private** repo with the same layout. `cmds` lists those too.
 
 ## Layout
 
@@ -79,6 +80,8 @@ The links point back into this repo, so editing a script here takes effect right
 
 ## Changelog
 
+- **2026-11-04** — `cmds` now finds tools through the `~/bin` symlinks, so it lists tools from every
+  installed repo (including private ones) without naming them.
 - **2026-11-03** — Added `cmds`: live cheat sheet (list, per-tool usage, find, tip) read from the scripts.
   `motd` box shows a random `tip`. Realigned the `motd`/`tidy` usage columns (2-space gap rule).
 - **2026-11-03** — Added `tidy`: dry-run-by-default Downloads sorter with 11 categories,
